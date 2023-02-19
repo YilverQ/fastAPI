@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI()
+user = APIRouter(prefix='/user',
+                 tags = ['User'])
 
 #Model
 class User(BaseModel):
@@ -20,45 +21,49 @@ users_db = [User(id_key = 1, name = "Yilver", lastname = "Quevedo", email = "yil
 
 
 #Create user
-@app.post('/user')
+@user.post('/', status_code=201)
 async def create(user : User):
     if type(search_user(user.id_key)) == User:
-        return {'error' : 'User already exist!'}
+        raise HTTPException(status_code = 202, detail='User already exist!')
     users_db.append(user)
-    return users_db
+    result = {'detail' : 'Users has created!'}
+    result.update({'user' : user.dict()})
+    return result
 
 
 #Read all users
-@app.get('/users')
+@user.get('/all')
 async def read_all():
     return users_db
 
 
 #Read only one user.
-@app.get('/user/{id_user}')
+@user.get('/{id_user}')
 async def read(id_user : int):
-    return search_user(id_user)
+    if search_user(id_user):
+        return search_user(id_user)
+    raise HTTPException(status_code = 404, detail='User not found!')
 
 
 #Update one user. 
-@app.put('/user')
+@user.put('/')
 async def update(user : User):
     for index, item in enumerate(users_db):
         if item.id_key == user.id_key:
             users_db[index] = user
             return user
-    return {'error' : 'No se ha encontrado el usuario'}
+    raise HTTPException(status_code = 404, detail='User not found!')
 
 
 #Delete one user.
-@app.delete('/user/{id_user}')
+@user.delete('/{id_user}')
 async def delete(id_user : int):
     for index, item in enumerate(users_db):
         if item.id_key == id_user:
             # users_db.pop(index)
             del users_db[index]
-            return {'message' : 'User has deleted!'}
-    return {'error' : 'No se ha encontrado el usuario'}
+            return {'detail' : 'User has deleted!'}
+    raise HTTPException(status_code = 404, detail='User not found!')
 
 
 def search_user(id_user : int):
@@ -67,4 +72,4 @@ def search_user(id_user : int):
     try:
         return user[0]
     except:
-        return {'error' : 'No se ha encontrado el usuario'}
+        return False
